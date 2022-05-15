@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 good-web-game = "0.5.0"
 rand = "0.8.5"
+getrandom = { version = "0.2.6", features = ["js"] } # https://docs.rs/getrandom/latest/getrandom/#webassembly-support
 

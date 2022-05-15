@@ -11,9 +11,9 @@ use ggez::timer;
 use rand::{Rng, RngCore};
 use rand::prelude::ThreadRng;
 
-const WIDTH: usize = 132;
-const HEIGHT: usize = 99;
-const PIXEL_SIZE: f32 = 4.0;
+const WIDTH: usize = 100;
+const HEIGHT: usize = 75;
+const PIXEL_SIZE: f32 = 7.0;
 const PIXEL_GAP: f32 = 1.0;
 const PIXEL_POS: f32 = PIXEL_SIZE + PIXEL_GAP;
 const PALETTE_5: Color = Color { r: 255. / 255., g: 204. / 255., b: 170. / 255., a: 1. };
@@ -30,6 +30,7 @@ const COLORS: [Color; 5] = [
 ];
 const MAX_COLOR_INDEX: usize = COLORS.len() - 1;
 const DIFFUSION_ENERGY: u8 = MAX_COLOR_INDEX as u8;
+const ENERGY_PER_FRAME: u8 = 10;
 
 #[derive(Clone)]
 struct Particle {
@@ -40,7 +41,7 @@ struct Particle {
 
 impl Particle {
     fn new() -> Particle {
-        Particle { energy: std::cmp::max(2, (rand::thread_rng().next_u32() % MAX_COLOR_INDEX as u32) as u8), color: 0, index: 0 }
+        Particle { energy: 2, color: 0, index: 0 }
     }
 }
 
@@ -122,7 +123,11 @@ impl MainState {
             .for_each(|p| over_energy_limit_indexes.push(p.index)); // fighting the borrow checker a bit here. Future me, there is probably a better way to do this
 
         over_energy_limit_indexes.iter().for_each(|i| {
-            self.grid.particles[*i].energy = 0;
+            if self.grid.particles[*i].energy > 4 {
+                self.grid.particles[*i].energy /= 4;
+            } else {
+                self.grid.particles[*i].energy = 0;
+            }
             self.grid.particles[*i].color = MAX_COLOR_INDEX;
 
             let neighbors_indexes = [
@@ -149,19 +154,15 @@ impl MainState {
 
 impl event::EventHandler<ggez::GameError> for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
-        if timer::ticks(ctx) % 20 == 0 {
+        if timer::ticks(ctx) % 8 == 0 {
+            self.grid.particles.iter_mut()
+                .filter(|p| p.color > 0 && self.rnd.gen_bool(0.45))
+                .for_each(|p| p.color -= 1);
             self.update_particles();
         }
-
-        if timer::ticks(ctx) % 30 == 0 {
-            println!("Delta frame time: {:?} ", timer::delta(ctx));
-            println!("Average FPS: {}", timer::fps(ctx));
-            self.grid.particles.iter_mut()
-                .filter(|p| p.color > 0)
-                .for_each(|p| p.color -= 1);
+        for _ in 0..ENERGY_PER_FRAME {
+            self.add_energy();
         }
-
-        self.add_energy();
         Ok(())
     }
 
